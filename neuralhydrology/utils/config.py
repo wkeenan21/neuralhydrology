@@ -1,3 +1,4 @@
+import itertools
 import random
 import re
 import warnings
@@ -233,7 +234,7 @@ class Config(object):
                 raise ValueError('Forecast sequence length must be < sequence length.')
             if cfg.get('forecast_overlap'):
                 if cfg['forecast_overlap'] > cfg['forecast_seq_length']:
-                    raise ValueError('Forecast overlap must be <= forecast_seq_length.')
+                    raise ValueError('Forecast overlap must be <= forecast sequence length.')
 
         # Check autoregressive inputs.
         if 'autoregressive_inputs' in cfg:
@@ -353,8 +354,18 @@ class Config(object):
         return self._cfg.get("warmup_period", 0)
 
     @property
-    def dynamic_inputs(self) -> Union[List[str], Dict[str, List[str]]]:
+    def dynamic_inputs(self) -> Union[list[str], list[list[str]], dict[str, list[str]]]:
         return self._get_value_verbose("dynamic_inputs")
+
+    @property
+    def dynamic_inputs_flattened(self) -> list[str]:
+        dynamic_inputs = self.dynamic_inputs
+        if isinstance(dynamic_inputs, dict):
+            return list(itertools.chain.from_iterable(dynamic_inputs.values()))
+        if dynamic_inputs and isinstance(dynamic_inputs[0], list):
+            return list(itertools.chain.from_iterable(dynamic_inputs))
+        else:
+            return dynamic_inputs
 
     @property
     def dynamics_embedding(self) -> dict:
@@ -410,8 +421,16 @@ class Config(object):
         return self._cfg.get("forecast_hidden_size", self.hidden_size)
 
     @property
-    def forecast_inputs(self) -> List[str]:
+    def forecast_inputs(self) -> list[str] | list[list[str]]:
         return self._cfg.get("forecast_inputs", [])
+
+    @property
+    def forecast_inputs_flattened(self) -> list[str]:
+        forecast_inputs = self.forecast_inputs
+        if forecast_inputs and isinstance(forecast_inputs[0], list):
+            return list(itertools.chain.from_iterable(forecast_inputs))
+        else:
+            return forecast_inputs
 
     @property
     def forecast_overlap(self) -> int:
@@ -445,8 +464,16 @@ class Config(object):
             return self._get_value_verbose("head")
 
     @property
-    def hindcast_inputs(self) -> List[str]:
+    def hindcast_inputs(self) -> list[str] | list[list[str]]:
         return self._cfg.get("hindcast_inputs", [])
+
+    @property
+    def hindcast_inputs_flattened(self) -> list[str]:
+        hindcast_inputs = self.hindcast_inputs
+        if hindcast_inputs and isinstance(hindcast_inputs[0], list):
+            return list(itertools.chain.from_iterable(hindcast_inputs))
+        else:
+            return hindcast_inputs
 
     @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
@@ -578,6 +605,25 @@ class Config(object):
     @property
     def n_taus(self) -> int:
         return self._get_value_verbose("n_taus")
+
+    @property
+    def nan_handling_method(self) -> str:
+        method = self._cfg.get("nan_handling_method", None)
+        if not method:
+            return None
+        return method
+
+    @property
+    def nan_sequence_probability(self) -> float:
+        return self._cfg.get("nan_sequence_probability", 0.0)
+
+    @property
+    def nan_step_probability(self) -> float:
+        return self._cfg.get("nan_step_probability", 0.0)
+
+    @property
+    def nan_handling_pos_encoding_size(self) -> int:
+        return self._cfg.get("nan_handling_pos_encoding_size", 0)
 
     @property
     def negative_sample_handling(self) -> str:
@@ -869,7 +915,53 @@ class Config(object):
             Level of verbosity.
         """
         return self._cfg.get("verbose", 1)
+    
+    @property
+    def early_stopping(self) -> bool:
+        """Whether to use early stopping. Defaults to False if not set."""
+        early_stopping = self._cfg.get("early_stopping", False)
+        if early_stopping and self.validate_every != 1:
+            raise ValueError(
+                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
+                "Set validate_every=1 in the config to use early stopping."
+            )
+        return early_stopping
 
+    @property
+    def patience_early_stopping(self) -> int:
+        """Number of epochs with no improvement before stopping."""
+        if self.early_stopping:
+            return self._get_value_verbose("patience_early_stopping")
+        
+    @property
+    def minimum_epochs_before_early_stopping(self) -> int:
+        """Minimum number of epochs before early stopping can be triggered."""
+        if self.early_stopping:
+            return self._get_value_verbose("minimum_epochs_before_early_stopping")
+    
+    @property
+    def dynamic_learning_rate(self) -> bool:
+        """Whether to use  dynamic learning rate. Defaults to False if not set."""
+        early_stopping = self._cfg.get("early_stopping", False)
+        if early_stopping and self.validate_every != 1:
+            raise ValueError(
+                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
+                "Set validate_every=1 in the config to use early stopping."
+            )
+        return early_stopping
+    
+    @property
+    def patience_dynamic_learning_rate(self) -> int:
+        """Number of epochs with no improvement before reducing learning rate."""
+        if self.dynamic_learning_rate:
+            return self._get_value_verbose("patience_dynamic_learning_rate")
+        
+    @property
+    def factor_dynamic_learning_rate(self) -> float:
+        """Factor by which to reduce learning rate."""
+        if self.dynamic_learning_rate:
+            return self._get_value_verbose("factor_dynamic_learning_rate")
+    
     def _get_embedding_spec(self, embedding_spec: dict) -> dict:
         if isinstance(embedding_spec, bool) and embedding_spec:  #
             msg = [
@@ -891,6 +983,26 @@ class Config(object):
             'activation': embedding_spec.get('activation', 'tanh'),
             'dropout': embedding_spec.get('dropout', 0.0)
         }
+
+    @property
+    def xlstm_num_blocks(self) -> int:
+        return self._cfg.get("xlstm_num_blocks", 2)
+    
+    @property
+    def xlstm_slstm_at(self) -> List[int]:
+        return self._as_default_list(self._cfg.get("xlstm_slstm_at", [1]))
+    
+    @property
+    def xlstm_heads(self) -> int:
+        return self._cfg.get("xlstm_heads", 1)
+    
+    @property
+    def xlstm_kernel_size(self) -> int:
+        return self._cfg.get("xlstm_kernel_size", 4)
+    
+    @property
+    def xlstm_proj_factor(self) -> float:
+        return self._cfg.get("xlstm_proj_factor", 1.3)
 
 
 def create_random_name():

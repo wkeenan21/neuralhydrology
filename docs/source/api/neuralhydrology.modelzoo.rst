@@ -27,8 +27,10 @@ nh.modelzoo
    neuralhydrology.modelzoo.multihead_forecast_lstm
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
+   neuralhydrology.modelzoo.positional_encoding
    neuralhydrology.modelzoo.sequential_forecast_lstm
    neuralhydrology.modelzoo.shm
    neuralhydrology.modelzoo.stacked_forecast_lstm
    neuralhydrology.modelzoo.template
    neuralhydrology.modelzoo.transformer
+   neuralhydrology.modelzoo.x_lstm
