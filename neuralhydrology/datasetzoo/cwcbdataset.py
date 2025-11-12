@@ -38,6 +38,40 @@ class CWCB(BaseDataset):
         """Load catchment attributes"""
         return load_basin_characteristics(self.cfg.data_dir, basins=self.basins)
 
+def count_full_years_no_nans(df):
+    """
+    Count the number of consecutive 365-day periods in a daily DataFrame
+    with no NaNs in *any* column.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Must contain a 'date' column with daily timestamps.
+
+    Returns
+    -------
+    int
+        Number of complete 365-day non-NaN periods across all columns.
+    """
+
+    # Ensure sorted dates
+    df = df.copy()
+
+    # Boolean mask where all columns are non-NaN
+    all_valid = df.notna().all(axis=1)
+
+    # Identify contiguous blocks of valid data
+    group_id = (all_valid != all_valid.shift()).cumsum()
+    block_lengths = (
+        all_valid.groupby(group_id)
+        .apply(lambda g: g.sum() if g.all() else 0)
+    )
+
+    # Convert to number of full 365-day spans
+    full_years = (block_lengths // 365).sum()
+
+    return int(full_years)
+
 def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     preprocessed_dir = data_dir
 
@@ -59,6 +93,9 @@ def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
         df.index = df.index.tz_localize(None)
     except:
         df.index = pd.to_datetime(df.index).tz_localize(None)
+
+    count_of_years = count_full_years_no_nans(df)
+    print(f'{df['gage'].iloc[0]}, years: {count_of_years}')
     return df
 
 def load_basin_characteristics(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
