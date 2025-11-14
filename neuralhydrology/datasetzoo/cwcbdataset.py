@@ -94,8 +94,8 @@ def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     except:
         df.index = pd.to_datetime(df.index).tz_localize(None)
 
-    count_of_years = count_full_years_no_nans(df)
-    print(f'{df['gage'].iloc[0]}, years: {count_of_years}')
+    #count_of_years = count_full_years_no_nans(df)
+    #print(f'{df['gage'].iloc[0]}, years: {count_of_years}')
     return df
 
 def load_basin_characteristics(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
