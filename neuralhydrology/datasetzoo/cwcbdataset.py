@@ -86,7 +86,7 @@ def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
 
     # load the data for the specific basin into a time-indexed dataframe
     basin_file = preprocessed_dir / f"{basin}.csv"
-    df = pd.read_csv(basin_file, index_col='date', parse_dates=['date'])
+    df = pd.read_csv(basin_file)
     df['gage'] = df['gage'].astype(str).str.zfill(8)
     # add logic for localizing time zone
     try:
@@ -94,8 +94,14 @@ def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     except:
         df.index = pd.to_datetime(df.index).tz_localize(None)
 
-    #count_of_years = count_full_years_no_nans(df)
-    #print(f'{df['gage'].iloc[0]}, years: {count_of_years}')
+    count_of_years = count_full_years_no_nans(df)
+    print(f'{df['gage'].iloc[0]}, years: {count_of_years}')
+
+    # force df index to be datetimeindex
+    df = df.reset_index()
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.set_index('date')
+
     return df
 
 def load_basin_characteristics(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
